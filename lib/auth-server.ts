@@ -14,14 +14,18 @@ const pool = new Pool({
   connectionTimeoutMillis: 30000, // 30 seconds
   idleTimeoutMillis: 30000,
   max: 5,
-  keepAlive: false, // Disable keep-alive to avoid hanging connections
   allowExitOnIdle: true,
 });
 
 export const auth = betterAuth({
   database: pool,
-  baseURL: process.env.BASE_URL || "http://localhost:3000",
-  secret: process.env.BETTER_AUTH_SECRET || "default-secret-please-change",
+  baseURL: process.env.BASE_URL!,
+  secret: process.env.BETTER_AUTH_SECRET!,
+  trustedOrigins: async (_: Request) => {
+		// Return an array of trusted origins based on the request
+		return [process.env.BASE_URL!];
+	},
+
   
   plugins: [
     genericOAuth({
