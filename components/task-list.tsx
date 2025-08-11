@@ -25,8 +25,13 @@ export function TaskList({
   const estimationMap = new Map(estimations.map(e => [e.issueId, e]));
 
   const handleHoursChange = (issueId: number, value: string) => {
-    const hours = parseFloat(value) || 0;
-    onEstimationChange(issueId, hours);
+    // Allow empty string to clear the value
+    if (value === '') {
+      onEstimationChange(issueId, 0);
+    } else {
+      const hours = parseFloat(value) || 0;
+      onEstimationChange(issueId, hours);
+    }
   };
 
   const handleSelectAll = (checked: boolean) => {
@@ -144,13 +149,13 @@ export function TaskList({
                           <Clock className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
                           <input
                             type="number"
-                            value={estimation?.estimatedHours || 0}
+                            value={estimation?.estimatedHours || ''}
                             onChange={(e) => handleHoursChange(issue.id, e.target.value)}
                             step="0.5"
                             min="0"
                             max="40"
-                            className="w-24 pl-10 pr-3 py-2 bg-white/5 border border-white/10 rounded-lg text-white text-sm focus:outline-none focus:border-purple-500 transition-colors"
-                            placeholder="0"
+                            className="w-24 pl-10 pr-3 py-2 bg-white/5 border border-white/10 rounded-lg text-white text-sm focus:outline-none focus:border-purple-500 transition-colors [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+                            placeholder="Hours"
                           />
                         </div>
                       </div>

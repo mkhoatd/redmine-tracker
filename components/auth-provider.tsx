@@ -28,7 +28,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   useEffect(() => {
     // Check session on mount
     checkSession();
-  }, []);
+  }, []); // Empty dependency array - only run once on mount
 
   const signIn = async () => {
     // Use Better Auth client to sign in with OAuth provider

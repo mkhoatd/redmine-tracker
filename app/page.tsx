@@ -4,7 +4,7 @@ import { useState, useEffect } from 'react';
 import { TaskList } from '@/components/task-list';
 import { TimeEntryPreview } from '@/components/time-entry-preview';
 import { RedmineIssue, EstimationResult, TimeEntryAllocation, RedmineTimeEntry } from '@/types';
-import { fetchCurrentMonthIssues, createTimeEntries, testRedmineConnection, fetchTimeEntryActivities } from '@/app/actions/redmine';
+import { fetchCurrentMonthIssues, createTimeEntries, testRedmineConnection, fetchTimeEntryActivities, fetchIssueCategories } from '@/app/actions/redmine';
 import { distributeTimeEntries } from '@/lib/time-distribution';
 import { 
   Loader2, RefreshCw, Brain, Send, AlertCircle, Settings, CheckCircle, 
@@ -33,22 +33,46 @@ export default function Home() {
   const [selectedActivityId, setSelectedActivityId] = useState<number | undefined>();
 
   useEffect(() => {
+    if (typeof window === 'undefined') return;
+    
     const saved = localStorage.getItem('redmine-api-key');
     if (saved) {
       setSavedApiKey(saved);
       setTempApiKey(saved);
+      // Clear any error when we have a saved API key
+      setError(null);
     }
   }, []);
 
-  const handleApiKeySave = () => {
+  // Auto-fetch issues when user logs in and has API key
+  useEffect(() => {
+    // Clear any lingering errors when component mounts or user/key changes
+    setError(null);
+    
+    if (user && savedApiKey) {
+      console.log('User logged in with API key, fetching issues...');
+      // Silently fetch issues on login - don't show errors for auto-fetch
+      fetchIssuesSilently();
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [user, savedApiKey]);
+
+  const handleApiKeySave = async () => {
     if (!tempApiKey) {
       setError('Please enter an API key');
       return;
     }
     setSavedApiKey(tempApiKey);
     localStorage.setItem('redmine-api-key', tempApiKey);
+    
     setError(null);
     setSuccess('API key saved successfully');
+    
+    // Auto-fetch issues after saving API key
+    setTimeout(() => {
+      fetchIssues();
+    }, 100);
+    
     setTimeout(() => setSuccess(null), 3000);
   };
 
@@ -70,26 +94,33 @@ export default function Home() {
   };
 
 
-  const fetchIssues = async () => {
+  const fetchIssues = async (silent = false) => {
+    // Clear any previous errors
+    if (!silent) {
+      setError(null);
+    }
+    
     if (!savedApiKey) {
-      setError('Please enter your Redmine API key first');
+      if (!silent) {
+        setError('Please enter your Redmine API key first');
+      }
       return;
     }
 
     setLoading(true);
-    setError(null);
     
     try {
-      // Fetch issues and activities in parallel
-      const [issuesResult, activitiesResult] = await Promise.all([
+      // Fetch issues, activities, and tags in parallel
+      const [issuesResult, activitiesResult, tagsResult] = await Promise.all([
         fetchCurrentMonthIssues(savedApiKey),
-        fetchTimeEntryActivities(savedApiKey)
+        fetchTimeEntryActivities(savedApiKey),
+        fetchIssueCategories(savedApiKey)
       ]);
 
       if (issuesResult.success && issuesResult.data) {
         setIssues(issuesResult.data);
         setSelectedIssues(new Set(issuesResult.data.map(i => i.id)));
-      } else {
+      } else if (!silent) {
         setError(issuesResult.error || 'Failed to fetch issues');
       }
       
@@ -101,12 +132,20 @@ export default function Home() {
           setSelectedActivityId(defaultActivity.id);
         }
       }
+      
+      if (tagsResult.success && tagsResult.data) {
+        console.log('Fetched tags:', tagsResult.data);
+      }
     } catch (err) {
-      setError('Failed to fetch issues');
+      if (!silent) {
+        setError('Failed to fetch issues');
+      }
     } finally {
       setLoading(false);
     }
   };
+
+  const fetchIssuesSilently = () => fetchIssues(true);
 
   const handleEstimationChange = (issueId: number, hours: number) => {
     setEstimations(prev => {
@@ -381,7 +420,7 @@ export default function Home() {
               <div className="flex flex-wrap items-center justify-between gap-4 animate-fade-in">
                 <div className="flex flex-wrap gap-3">
                   <button
-                    onClick={fetchIssues}
+                    onClick={() => fetchIssues()}
                     disabled={loading}
                     className="px-6 py-3 bg-gradient-to-r from-purple-500 to-pink-500 text-white rounded-lg font-medium hover:from-purple-600 hover:to-pink-600 disabled:opacity-50 transition-all flex items-center gap-2 transform hover:scale-[1.02] active:scale-[0.98]"
                   >
@@ -430,7 +469,7 @@ export default function Home() {
               </div>
 
               {/* Notifications */}
-              {error && (
+              {error && !(error.includes('Please enter your Redmine API key') && issues.length > 0) && (
                 <div className="p-4 bg-red-500/10 backdrop-blur-xl border border-red-500/20 rounded-lg flex items-center gap-3 animate-slide-down">
                   <AlertCircle className="w-5 h-5 text-red-400 flex-shrink-0" />
                   <span className="text-red-400">{error}</span>

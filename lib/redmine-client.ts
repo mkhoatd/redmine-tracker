@@ -110,4 +110,49 @@ export class RedmineClient {
       return false;
     }
   }
+
+  async getIssueCategories(): Promise<any[]> {
+    try {
+      const projectIds = new Set<number>();
+      
+      // Get projects from recent issues to fetch their categories
+      try {
+        const issues = await this.getIssuesForCurrentMonth();
+        issues.forEach(issue => {
+          if (issue.project?.id) {
+            projectIds.add(issue.project.id);
+          }
+        });
+      } catch (error) {
+        console.warn('Could not fetch issues for categories:', error);
+        // Continue anyway, return empty array if no projects found
+      }
+
+      if (projectIds.size === 0) {
+        console.log('No projects found to fetch categories from');
+        return [];
+      }
+
+      const allCategories: any[] = [];
+      
+      // Fetch categories for each project
+      for (const projectId of projectIds) {
+        try {
+          const response = await this.client.get(`/projects/${projectId}/issue_categories.json`);
+          if (response.data.issue_categories) {
+            allCategories.push(...response.data.issue_categories.map((cat: any) => ({
+              ...cat,
+              project_id: projectId
+            })));
+          }
+        } catch (error) {
+          console.warn(`Failed to fetch categories for project ${projectId}:`, error);
+        }
+      }
+      
+      return allCategories;
+    } catch (error) {
+      throw new Error(`Failed to fetch issue categories: ${error}`);
+    }
+  }
 }

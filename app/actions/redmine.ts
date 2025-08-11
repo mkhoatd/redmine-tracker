@@ -76,6 +76,17 @@ export async function fetchTimeEntryActivities(apiKey: string) {
   }
 }
 
+export async function fetchIssueCategories(apiKey: string) {
+  try {
+    const config = getRedmineConfig(apiKey);
+    const client = new RedmineClient(config);
+    const categories = await client.getIssueCategories();
+    return { success: true, data: categories, error: null };
+  } catch (error) {
+    return { success: false, data: null, error: String(error) };
+  }
+}
+
 export async function createTimeEntries(
   apiKey: string,
   entries: Omit<RedmineTimeEntry, 'id'>[]
