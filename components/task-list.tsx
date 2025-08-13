@@ -203,7 +203,7 @@ export function TaskList({
             <AlertCircle className="w-8 h-8 text-purple-400" />
           </div>
           <h3 className="text-lg font-medium text-white mb-2">No tasks found</h3>
-          <p className="text-gray-400">No tasks found for the current month</p>
+          <p className="text-gray-400">No tasks found for the current and previous month</p>
         </div>
       )}
     </div>

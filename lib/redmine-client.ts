@@ -40,12 +40,64 @@ export class RedmineClient {
     }
   }
 
+  async getAllOpenIssues(): Promise<RedmineIssue[]> {
+    try {
+      const user = await this.getCurrentUser();
+      const params = {
+        assigned_to_id: user.id,
+        status_id: 'open',
+        limit: 100,
+      };
+
+      const response = await this.client.get('/issues.json', { params });
+      return response.data.issues;
+    } catch (error) {
+      throw new Error(`Failed to fetch open issues: ${error}`);
+    }
+  }
+
+  async getIssuesFromDateRange(startDate: Date, endDate: Date): Promise<RedmineIssue[]> {
+    try {
+      const user = await this.getCurrentUser();
+      const params = {
+        assigned_to_id: user.id,
+        limit: 100,
+        [`created_on`]: `><${startDate.toISOString().split('T')[0]}|${endDate.toISOString().split('T')[0]}`,
+      };
+
+      const response = await this.client.get('/issues.json', { params });
+      return response.data.issues;
+    } catch (error) {
+      throw new Error(`Failed to fetch issues from date range: ${error}`);
+    }
+  }
+
   async getIssuesForCurrentMonth(): Promise<RedmineIssue[]> {
     const now = new Date();
-    const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
+    const startOfLastMonth = new Date(now.getFullYear(), now.getMonth() - 1, 1);
     const endOfMonth = new Date(now.getFullYear(), now.getMonth() + 1, 0);
     
-    return this.getAssignedIssues(startOfMonth, endOfMonth);
+    // Fetch both open issues and issues from the date range
+    const [openIssues, dateRangeIssues] = await Promise.all([
+      this.getAllOpenIssues(),
+      this.getIssuesFromDateRange(startOfLastMonth, endOfMonth)
+    ]);
+    
+    // Merge and deduplicate by issue ID
+    const issueMap = new Map<number, RedmineIssue>();
+    
+    openIssues.forEach(issue => {
+      issueMap.set(issue.id, issue);
+    });
+    
+    dateRangeIssues.forEach(issue => {
+      issueMap.set(issue.id, issue);
+    });
+    
+    // Sort by creation date (newest first)
+    return Array.from(issueMap.values()).sort((a, b) => {
+      return new Date(b.created_on).getTime() - new Date(a.created_on).getTime();
+    });
   }
 
   async getTimeEntriesForIssue(issueId: number): Promise<RedmineTimeEntry[]> {
