@@ -2,7 +2,7 @@ This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-
 
 [![Deploy with Vercel](https://vercel.com/button)](https://vercel.com/new/clone?repository-url=https%3A%2F%2Fgithub.com%2Fmkhoatd%2Fredmine-tracker&env=NEXT_PUBLIC_REDMINE_URL,OIDC_CLIENT_ID,OIDC_CLIENT_SECRET,DATABASE_URL,OIDC_ISSUER,BASE_URL,BETTER_AUTH_SECRET)
 
-## Getting Started
+## Getting Started 
 
 First, run the development server:
 
